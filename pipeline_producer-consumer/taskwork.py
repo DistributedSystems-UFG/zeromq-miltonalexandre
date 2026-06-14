@@ -1,17 +1,39 @@
-import zmq, time, pickle, sys
-from constPipe import *  #-
+import zmq
+import time
+import constPipe
+import threading
+
+
+def worker(sock, name):
+    while True:
+        work = int(sock.recv())
+        print(f"{name}: work for {work} seconds...")
+        time.sleep(work)
+
 
 context = zmq.Context()
-me = str(sys.argv[1])
-r  = context.socket(zmq.PULL)     # create a pull socket
-p1 = "tcp://"+ SRC1 +":"+ PORT1   # address first task source
-p2 = "tcp://"+ SRC2 +":"+ PORT2   # address second task source
-r.connect(p1)                     # connect to task source 1
-r.connect(p2)                     # connect to task source 2
-#-
-print (me + " started") #-
+sockA = context.socket(zmq.PULL)  # create a pull socket
+sockB = context.socket(zmq.PULL)  # create a pull socket
+p1 = f"tcp://{constPipe.SRC2}:{constPipe.PORT2}"  # address first task source
+p2 = f"tcp://{constPipe.SRC3}:{constPipe.PORT3}"  # address second task source
+sockA.connect(p1)  # connect to task source 1
+sockB.connect(p2)  # connect to task source 2
 
-while True:
-  work = pickle.loads(r.recv())   # receive work from a source
-  print (me + " received " + str(work[1]) + " from " + work[0]) #-
-  time.sleep(work[1]*0.01)        # pretend to work
+t1 = threading.Thread(
+    target=worker,
+    args=(
+        sockA,
+        "Pares",
+    ),
+)
+t2 = threading.Thread(
+    target=worker,
+    args=(
+        sockB,
+        "Impares",
+    ),
+)
+t1.start()
+t2.start()
+t1.join()
+t2.join()
